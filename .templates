@@ -1,0 +1,23 @@
+# Calculation templates
+
+# CaO0- and SrO- species
+Ca species:
+GS Geometry Optimization
+#p PBE1PBE/gen EmpiricalDispersion=GD3 Int=Ultrafine scfcyc=1000 opt=(MaxCycles=500)
+ES Geometry Optimization
+#p PBE1PBE/gen EmpiricalDispersion=GD3 Int=Ultrafine td=(full,nstates=6,root=1) opt=(MaxCycles=500) scfcyc=1000
+GS Frequency Calc
+#p freq=noraman PBE1PBE/gen EmpiricalDispersion=GD3 Int=UltraFine scfcyc=1000
+ES Frequency Calc
+#p freq=noraman td=(nstates=6,root=1) PBE1PBE/gen EmpiricalDispersion=GD3 Int=UltraFine scfcyc=1000
+Sr species:
+GS Geometry Optimization
+#p PBE1PBE/gen EmpiricalDispersion=GD3 Pseudo=Read Int=Ultrafine scfcyc=1000 opt=(MaxCycles=500)
+ES Geometry Optimization
+#p PBE1PBE/gen EmpiricalDispersion=GD3 Int=Ultrafine Pseudo=Read td=(full,nstates=6,root=1) opt=(MaxCycles=500) scfcyc=1000
+GS Frequency Calc
+#p freq=noraman Pseudo=Read PBE1PBE/gen EmpiricalDispersion=GD3 Int=UltraFine scfcyc=1000
+ES Frequency Calc
+#p freq=noraman Pseudo=Read td=(nstates=6,root=1) PBE1PBE/gen EmpiricalDispersion=GD3 Int=UltraFine scfcyc=1000 (edited) 
+
+
