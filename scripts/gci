@@ -49,7 +49,12 @@ def parse_xyz(args):
     if not geometry:
         print('Was not able to parse .xyz file!')
         exit(1)
-    geometry.pop(0) # skip the comment
+    try: # Try to extract charge and multiplicity from comment
+        ch, s = int(geometry[0][0]), int(geometry[0][1])
+        args.ch, args.s = ch, s
+    except ValueError:
+        pass
+    geometry.pop(0) 
     geometry = list([x for x in geometry if x]) # remove emply lines
     args.geometry = geometry
     return geometry

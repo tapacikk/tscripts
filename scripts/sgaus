@@ -37,25 +37,25 @@ h_rt={args.t*60*60},s_rt=86390,arch=intel*'
 def create_script(args):
     HOME=os.environ['HOME']
     args.basename = os.path.basename(args.inputfile.name)
-    print('#!/bin/bash -le', file=args.o)
-    print('#$ -cwd', file=args.o)
-    print(args.l, file=args.o)
-    print(f'#$ -pe shared* {args.c}', file=args.o)
-    print('#$ -j y', file=args.o)
-    print(f'#$ -o {HOME}/logs/joblog.{args.outname}.$JOB_ID', file=args.o)
-    print(f'#$ -M $USER@mail', file=args.o)
-    print('#$ -m bea', file=args.o)
-    print('''
-. /u/local/Modules/default/init/modules.sh
-module load gaussian/g16_sse4
-exe=`which g16`
-export GAUSS_SCRDIR=$TMPDIR
-set echo''', file=args.o)
-    print(f'cd {args.submitdir}', file=args.o)
-    print(f'echo $SLURM_JOBID >> {HOME}/journal', file=args.o)
-    print(f'/usr/bin/time -v -a $exe < {args.basename} >', end='')
-    print(f" {os.path.splitext(args.basename)[0]+'.out'} &", file=args.o)
-    print('wait', file=args.o)
+    print(
+        '#!/bin/bash -le',
+        '#$ -cwd', 
+        args.l,
+        f'#$ -pe shared* {args.c}',
+        '#$ -j y',
+        f'#$ -o {HOME}/logs/joblog.{args.outname}.$JOB_ID',
+        f'#$ -M $USER@mail',
+        '#$ -m bea',
+        '. /u/local/Modules/default/init/modules.sh',
+        'module load gaussian/g16_sse4',
+        'exe=`which g16`',
+        'export GAUSS_SCRDIR=$TMPDIR',
+        'set echo',
+        f'cd {args.submitdir}',
+        f'touch {HOME}/journal',
+        f'echo $JOB_ID {args.submitdir}/{args.basename} >> {HOME}/journal',
+        f"/usr/bin/time -v -a $exe < {args.basename} > {os.path.splitext(args.basename)[0]+'.out'} &",
+        'wait', file=args.o, sep='\n')
 
 
 def main():
