@@ -1,0 +1,20 @@
+#!/usr/bin/python3
+
+####################################################
+#    ** Gaussian Hoffman2 submission script **     #
+#   This script builds gaussian submission files   #
+#    to submit to the hoffman2 cluster via the     #
+#   SGE queing system. (uses python 3.*)           #
+####################################################
+# Sript written Feb/2023 by TRex from Ana group    #
+####################################################
+import os
+import sys
+import re
+import time
+from glob import glob
+import subprocess
+####################################################
+
+def parse_arguments():
+    from argparse import ArgumentParser

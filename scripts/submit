@@ -1,0 +1,123 @@
+#!/bin/sh
+
+OPTIND=1         
+
+nprocs=16
+calctime=2
+verbose=0 
+debug=0
+minutes=0
+mpi=0
+show_help () {
+   # Display Help
+   echo "Submit a job from input file for shared QChem calculation"
+   echo
+   echo "Syntax: submit [-h|d|mpi] [-p NPROCS] [-t CALCTIME] [INPUTFILE]"
+   echo "options:"
+   echo "p     Number of processors to use. Default 16"
+   echo "t     Time of the calculation (in hours). Default 2"
+   echo "mpi   Use MPI instead of shared. Default shared"
+   echo "d     Do not delete the submit script."
+   echo "h     Print this Help and exit."
+   echo
+}
+
+#Parse flagged args
+declare -a inputfiles
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        -p|--procs) nprocs="$2"; shift ;;
+        -t|--time) calctime="$2"; shift ;;
+        --minutes) minutes="$2"; shift ;;
+        -mpi) mpi=1 ;;
+        -d|--debug) debug=1 ;;
+        -h|--help) show_help; exit 0 ;;
+        -*|--*) echo "Unknown parameter passed: $1"; exit 1 ;;
+		*) inputfiles+=($1);; 
+    esac
+    shift
+done
+
+# Process errors with inputfiles
+if [[ ${#inputfiles[@]} > 1 ]]; then
+	echo ${inputfiles[@]}: Can\'t process multiple input files
+	exit 4
+elif [[ ${#inputfiles[@]} = 0 ]]; then
+	show_help
+	echo Please specify INPUTFILE
+	exit 0
+else
+	input=${inputfiles[0]}
+fi
+
+if ! test -f "$input"; then
+	echo $input does not exist!
+	exit 1
+fi
+
+# Handle MPI vs shared
+run_line="""/usr/bin/time -apv qchem -nt \$NSLOTS \$inputfile.inp \$inputfile.out"""
+cores_line="""#$ -pe shared $nprocs"""
+import_line="""module load qchem/current_sm"""
+if [[ $mpi = 1 ]]; then
+	run_line="""/usr/bin/time -apv qchem -mpi -np $nprocs \$inputfile.inp \$inputfile.out"""
+	cores_line="""#$ -pe dc* $nprocs"""
+	import_line="""module load qchem/current_mpi"""
+fi
+
+#Vars
+WORKDIR=$(dirname $(readlink -f $input))
+FILENAME=$(basename $input)
+BASE=${FILENAME%.*}
+
+cat > ${input%.*}.sh <<EOF
+#!/bin/bash
+#$ -cwd
+# error = Merged with joblog
+#$ -o /u/home/t/taras/logs/joblog.\$JOB_ID
+#$ -j y
+# Edit the line below to request the appropriate runtime and memory
+#$ -l h_rt=$calctime:0$minutes:00,h_data=1G
+# Modify the number of cores/nodes as needed:
+$cores_line
+# Email address to notify
+#$ -M \$USER@mail
+# Notify when
+#$ -m bea
+
+# echo job info on joblog:
+echo "Job \$JOB_ID started on:   " \$(hostname -s)
+echo "Job \$JOB_ID started on:   " \$(date)
+echo " "
+
+export inputfile=$BASE
+
+# cd into the workdir and make a note in the journal
+cd $WORKDIR
+echo $(readlink -f $input) \$JOB_ID >> $HOME/journal
+
+# load the job environment:
+. /u/local/Modules/default/init/modules.sh
+$import_line
+module li
+echo " "         
+
+# substitute the command to run the needed Q-Chem command below
+# (in particular the name of the input and output files):
+echo "$run_line"
+$run_line
+
+# echo job info on joblog:
+echo " "
+echo "Job $JOB_ID ended on:   " \`hostname -s\`
+echo "Job $JOB_ID ended on:   " \`date \`
+echo " "
+### Q-Chem_submit.sh STOP ###
+EOF
+
+# Submit the script
+qsub ${input%.*}.sh 
+
+if [[ $debug = 0 ]]; then
+	rm ${input%.*}.sh
+fi

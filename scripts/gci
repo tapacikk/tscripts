@@ -1,0 +1,129 @@
+#!/usr/bin/python3
+import os 
+import argparse
+import sys
+
+class BadGeomFile(Exception):
+    pass
+
+
+def parse_arguments():
+    #Parse args
+    parser = argparse.ArgumentParser(prog='gci',
+                                     description='Gaussian Create Inputfile')
+    parser.add_argument('geomfile', type=open,
+                        help='''File with the system geometry. Can ONLY be
+                                either .xyz file OR .out/.log file of the 
+                                Gaussian calculation.''')
+    parser.add_argument('-o', nargs='?', type=argparse.FileType('w'),
+                        metavar='OUTFILE', default=sys.stdout,
+                        help='file to write your Gaussian job.\
+                              Defaults to STDOUT')
+    parser.add_argument('-ch', default=0, type=int, metavar='CHARGE',
+                        help='Carge of the system. Default 0')
+    parser.add_argument('-s', default=1, type=int, metavar='MULTIPLICITY',
+                        help='Multiplicity of the system. Default 1')
+    parser.add_argument('-c', default=16, type=int, metavar='CORES',
+                        help='%%nprocs=c. Default 16')
+    parser.add_argument('-mem', default=3800, type=int,
+                        help='%%mem=mem (in Megabytes). Default 3800')
+    parser.add_argument('-basis', type=open, metavar='BASISFILE',
+                        help='''Path to the file with basis set''')
+    args = parser.parse_args()
+    # Route will either be taken from STDIN, or used a default one
+    if sys.stdin.isatty():
+        args.route = '#P HF SP'
+    else:
+        args.route = sys.stdin.readline().strip('\n')
+    return args
+
+
+def parse_xyz(args):
+    geometry = []
+    if len(args.geomfile.readline().split()) > 1:
+        print('Bad .xyz file format!')
+        exit(1)
+    for l in args.geomfile:
+        geometry.append(l.split())
+    args.geomfile.close()
+    if not geometry:
+        print('Was not able to parse .xyz file!')
+        exit(1)
+    geometry.pop(0) # skip the comment
+    geometry = list([x for x in geometry if x]) # remove emply lines
+    args.geometry = geometry
+    return geometry
+
+
+def parse_geom(file):
+    geom = []
+    for l in file:
+        if '--------------------' in l: 
+            break
+        words = l.split()
+        atom = [str(int(words[1]))]
+        atom.extend(words[3:])
+        geom.append(atom)
+    return geom
+
+
+def parse_gauss(args):
+    geometries = []
+    if 'Entering Gaussian System' not in args.geomfile.readline():
+        print('Was not able to parse Gaussian output!')
+        exit(1)
+    #Parse all the geometries in the file
+    for l in args.geomfile:
+        if 'Charge =' and 'Multiplicity =' in l:
+            args.ch, args.s = l.split()[2], l.split()[-1]
+        if 'Input orientation' in l:
+            for i in range(4):
+                args.geomfile.readline()
+            geometries.append(parse_geom(args.geomfile))
+    args.geomfile.close()
+    if not geometries:
+        print('Was not able to parse Gaussian output!')
+        exit(1)
+    # Return only last one
+    args.geometry = geometries[-1]
+    return geometries[-1]
+
+
+def parse_geomfile(args):
+    if '.xyz' in args.geomfile.name:
+        return parse_xyz(args)
+    elif '.log' in args.geomfile.name or '.out' in args.geomfile.name:
+        return parse_gauss(args)
+    else:
+        raise BadGeomFile('Please specify .xyz file or Gaussian output!')
+
+
+def create_input(args):
+    #BEGIN PRINTING FILE
+    print('%nproc=', args.c, sep='', file=args.o)
+    print('%mem=', args.mem, 'MB', sep='', file=args.o)
+    if args.o != sys.stdout:
+        outname = os.path.splitext(os.path.basename(args.o.name))[0]
+        print('%chk=', outname, sep='', file=args.o)
+    print(args.route, sep='', file=args.o)
+    print('', 'Mandatory comment line', '', sep='\n', file=args.o)
+    print(args.ch, args.s, file=args.o)
+    for atom in args.geometry:
+        print(' '.join(atom), file=args.o)
+    print(file=args.o)
+    if args.basis: 
+        print(''.join(args.basis.readlines()), file=args.o)
+        args.basis.close()
+    print(file=args.o)
+    #END PRINTING FILE
+    args.o.close()
+
+
+def main():
+    args = parse_arguments()
+    inp_geom = parse_geomfile(args)
+    create_input(args)
+
+
+if __name__ == '__main__':
+    main()
