@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# Check if we are in the hoffmann
+ping -c1 -t1 hoffman2.idre.ucla.edu &> /dev/null
+
+if [ "$?" != 0 ]; then
+    echo "U are not in reach of Hoffman2!"
+    exit 1
+fi
+
+# Sync the files
+if [ "$1" = "-big" ]; then
+    echo "Getting all the files..."
+    rsync -ahvzu --del --exclude "core*" --exclude "*.rwf" --exclude "*.chk" taras@hoffman2.idre.ucla.edu:/u/home/t/taras/work/ /Users/taras/work/hoff
+    exit 0
+fi
+
+
+rsync -ahvzu --del --exclude "core*" --exclude "*.rwf" --exclude "*.chk" --exclude "*.fchk"  taras@hoffman2.idre.ucla.edu:/u/home/t/taras/work/ /Users/taras/work/hoff

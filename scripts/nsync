@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# Download stuff from NERSC
+rsync -avzu --del -e "ssh -l taras -i /Users/taras/.ssh/nersc" cori.nersc.gov:/global/homes/t/taras/work/ /Users/taras/work/nersc/ 

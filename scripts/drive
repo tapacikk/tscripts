@@ -1,0 +1,3 @@
+#!/bin/bash
+
+rclone sync ~/work/ drive:taras -v -L
