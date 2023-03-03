@@ -62,9 +62,9 @@ bindsym $super+s layout toggle split
 bindsym $super+space floating toggle
 
 # set workspace names
-set $ws1 "1< web >"
-set $ws2 "2< term >"
-set $ws3 "3< chemcraft >"
+set $ws1 "1:web"
+set $ws2 "2:term "
+set $ws3 "3:chemcraft"
 set $ws4 "4:slack"
 set $ws5 "5"
 set $ws6 "6"
