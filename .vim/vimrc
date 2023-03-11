@@ -1,10 +1,9 @@
 set nocompatible
 set hidden
-set nu
+set laststatus=2
 
 inoremap kj <Esc>
 inoremap jk <Esc>
-set laststatus=2
 set incsearch
 set wildmenu
 set backspace=indent,eol,start
@@ -32,9 +31,11 @@ noremap <C-n> :set nu!<CR>
 hi Normal ctermbg=none
 nnoremap ;w :w<CR>
 nnoremap ;q :q<CR>
-nnoremap ls :ls<CR>:b<Space>
+nnoremap ;s :ls<CR>:b<Space>
 nnoremap ;e :e<Space>
 nnoremap ;; :
 nnoremap 11 :!
 nnoremap ;n :NERDTreeToggle<CR>
-
+let NERDTreeWinSize=30
+let NERDTreeMinimalUI=1
+let NERDTreeMinimalMenu=1
