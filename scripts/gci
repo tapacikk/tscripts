@@ -29,6 +29,8 @@ def parse_arguments():
                         help='%%mem=mem (in Megabytes). Default 3800')
     parser.add_argument('-basis', type=open, metavar='BASISFILE',
                         help='''Path to the file with basis set''')
+    parser.add_argument('--geomonly', action='store_true',
+                        help='''Only output parsed geometry''')
     args = parser.parse_args()
     # Route will either be taken from STDIN, or used a default one
     if sys.stdin.isatty():
@@ -91,6 +93,10 @@ def parse_gauss(args):
         exit(1)
     # Return only last one
     args.geometry = geometries[-1]
+    if args.geomonly:
+        for atom in args.geometry:
+            print(' '.join(atom), file=args.o)
+        quit(0)
     return geometries[-1]
 
 
