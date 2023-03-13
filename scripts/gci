@@ -29,7 +29,7 @@ def parse_arguments():
                         help='%%mem=mem (in Megabytes). Default 3800')
     parser.add_argument('-basis', type=open, metavar='BASISFILE',
                         help='''Path to the file with basis set''')
-    parser.add_argument('--geomonly', action='store_true',
+    parser.add_argument('--xyz', action='store_true',
                         help='''Only output parsed geometry''')
     args = parser.parse_args()
     # Route will either be taken from STDIN, or used a default one
@@ -76,11 +76,14 @@ def parse_geom(file):
 
 def parse_gauss(args):
     geometries = []
+    energs = []
     if 'Entering Gaussian System' not in args.geomfile.readline():
         print('Was not able to parse Gaussian output!')
         exit(1)
     #Parse all the geometries in the file
     for l in args.geomfile:
+        if 'SCF Done: ' in l:
+            energs.append(float(l.split()[4]))
         if 'Charge =' and 'Multiplicity =' in l:
             args.ch, args.s = l.split()[2], l.split()[-1]
         if 'Input orientation' in l:
@@ -93,7 +96,10 @@ def parse_gauss(args):
         exit(1)
     # Return only last one
     args.geometry = geometries[-1]
-    if args.geomonly:
+    args.energy = energs[-1]
+    if args.xyz:
+        print(len(args.geometry))
+        print(args.energy)
         for atom in args.geometry:
             print(' '.join(atom), file=args.o)
         quit(0)
