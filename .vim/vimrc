@@ -32,11 +32,12 @@ nnoremap ;e :e<Space>
 nnoremap ;; :
 nnoremap 11 :!
 nnoremap ;n :NERDTreeToggle<CR>
-let NERDTreeWinSize=30
+let NERDTreeWinSize=20
 let NERDTreeMinimalUI=1
 let NERDTreeMinimalMenu=1
+
 " STATUSLINE
-hi User1 ctermfg=0 ctermbg=114
+hi User1 ctermfg=255 ctermbg=0
 hi User2 ctermfg=114 ctermbg=0
 let g:currentmode={
        \ 'n'  : 'NORMAL ',

@@ -1,5 +1,5 @@
 export ZSH="$HOME/.oh-my-zsh"
-ZSH_THEME="simple" # set by `omz`
+ZSH_THEME="mh" # set by `omz`
 plugins=(git)
 source $ZSH/oh-my-zsh.sh
 bindkey -M viins 'kj' vi-cmd-mode
@@ -9,4 +9,6 @@ bindkey -v
 export EDITOR=vim
 alias gs="git status"
 alias gc="git commit"
-export PATH=$PATH:~/.local/bin
+alias :e="vi"
+export PATH=$PATH:~/.local/bin:~/.adb-fastboot
+
