@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# Check if we are in the jollyroger network
+ping -c1 -t1 $JOLLY_IP &> /dev/null
+
+if [ $? != 0 ]; then
+    echo "U are not in reach of Jollyroger!"
+    exit 1
+fi
+
+# Sync the files
+rsync -av --del --exclude "*.rwf" --exclude "*.chk"  taras@$JOLLY_IP:/home/taras/work/ /Users/taras/work/jollyroger

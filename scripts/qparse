@@ -1,0 +1,59 @@
+#!/opt/homebrew/bin/python3
+import os 
+import argparse
+
+last = 0
+converged = 0
+
+class NotConverged(Exception):
+    pass
+
+def ev_to_nm(ev):
+    plank = 6.62607015e-34
+    c = 299792458
+    wavelength = round((plank*c)/(float(ev)*1.602177e-19)*10e8, 2)
+    cm = round(1/wavelength * 10e6, 2)
+    return str(wavelength) + 'nm ' + str(cm) + 'cm-1'
+
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('qfile', help='QChem output file to parse')
+    parser.add_argument('-xyz', help='Output in xyz-file format', action='store_true')
+    args = parser.parse_args()
+    if os.path.isfile(args.qfile):
+        return args
+    raise FileNotFoundError(f'{args.qfile} : File not found!')
+
+def parse_file(args):
+    # Read text
+    converged = 0
+    n_atoms = 0
+    geometry = []
+    energies = []
+    with open(args.qfile, 'r') as f:
+        for l in f:
+            if 'Total energy in the final basis set' in l:
+                energies.append(l.split()[-1])
+            if 'OPTIMIZATION CONVERGED' in l:
+                converged = 1
+            if converged and 'Standard Nuclear Orientation (Angstroms)' in l:
+                next(f)
+                next(f)
+                break
+        if not converged:
+            raise NotConverged('Optimization did not converge!')
+        for l in f:
+            if '--------------------' in l: break
+            n_atoms += 1
+            geometry.append(l.split()[1:])
+        if args.xyz:
+            print(n_atoms, f'Total energy in the final basis set: {energies[-1]}', sep='\n')
+        for atom in geometry:
+            print('  '.join(atom))
+
+def main():
+    args = parse_arguments()
+    parse_file(args)
+
+if __name__ == '__main__':
+    main()

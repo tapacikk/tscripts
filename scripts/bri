@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# Check if we are in the hoffmann
+ping -c1 -t10 bridges2.psc.edu &> /dev/null
+
+if [ "$?" != 0 ]; then
+    echo "U are not in reach of Bridges-2!"
+    exit 1
+fi
+
+# Sync the files
+if [ "$1" = "-big" ]; then
+    echo "Getting all the files..."
+    rsync -ahvzu --del --exclude "cas" --exclude "*.gjf" --exclude "Gau*" --exclude "core*" --exclude "*.rwf" --exclude "*.chk" khvorost@bridges2.psc.edu:/jet/home/khvorost/work/ /Users/taras/work/bri
+    exit 0
+fi
+
+
+rsync -ahvzu --del --exclude "cas" --exclude "*.gjf" --exclude "Gau*" --exclude "core*" --exclude "*.rwf" --exclude "*.chk" khvorost@bridges2.psc.edu:/jet/home/khvorost/work/ /Users/taras/work/bri
+

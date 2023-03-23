@@ -37,8 +37,8 @@ let NERDTreeMinimalUI=1
 let NERDTreeMinimalMenu=1
 
 " STATUSLINE
-hi User1 ctermfg=255 ctermbg=0
-hi User2 ctermfg=114 ctermbg=0
+hi User1 ctermfg=255 ctermbg=238
+hi User2 ctermfg=255 ctermbg=238
 let g:currentmode={
        \ 'n'  : 'NORMAL ',
        \ 'v'  : 'VISUAL ',

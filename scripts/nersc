@@ -2,7 +2,7 @@
 
 
 if [ "$1" = "-p" ]; then
-    ping -c1 -t100 perlmutter-p1.nersc.gov &> /dev/null
+    ping -c1 -t1 perlmutter-p1.nersc.gov &> /dev/null
     if [ "$?" != 0 ]; then
         echo "U are not in reach of Perlmutter!"
         exit 1
@@ -13,7 +13,7 @@ if [ "$1" = "-p" ]; then
 fi
 
 
-ping -c1 -t100 cori.nersc.gov&> /dev/null
+ping -c1 -t1 cori.nersc.gov&> /dev/null
 if [ "$?" != 0 ]; then
     echo "U are not in reach of Cori!"
     exit 1
