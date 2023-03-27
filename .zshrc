@@ -10,5 +10,8 @@ export EDITOR=vim
 alias gs="git status"
 alias gc="git commit"
 alias :e="vi"
+alias t="tmux set status"
 export PATH=$PATH:~/.local/bin:~/.adb-fastboot
+alias hoff-connect='tmux new-session hoffman2.idre.ucla.edu \\; set-option default-command "ssh remotehost"'
+
 
