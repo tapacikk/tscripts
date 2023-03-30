@@ -76,3 +76,4 @@ set statusline+=%1*
 " Location of cursor line
 set noshowmode
 set statusline+=[%l/%L]
+set ttimeoutlen=3
