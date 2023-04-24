@@ -1,0 +1,42 @@
+#!/usr/bin/python3
+import os 
+import argparse
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('gfile', help='Gaussian output file', type=open)
+    args = parser.parse_args()
+    args.text = args.gfile.readlines()
+    args.gfile.close()
+    return args
+
+
+def parse_file(args):
+    started = 0
+    for line in args.text:
+        w = line.split()
+        if 'Excited State   ' in line:
+            started = 1
+        if '************************************************************'in line and started:
+            started = 0
+        if not started:
+            continue
+        if 'Excited State' in line:
+            state_num, from_to_str, coeff, eV, nm, f, S_2 = w[2].rstrip(':'), '', '', w[4], w[6], w[8].lstrip('f='), w[9].lstrip('<S**2>=')
+            print(state_num, from_to_str, coeff, eV, nm, f, S_2, sep=',')
+        if '->' in line:
+            from_to_str = ''.join([w[0], w[1], w[2]])
+            coeff = float(w[-1])**2
+            print(state_num, from_to_str, coeff, eV, nm, f, S_2, sep=',')
+            
+
+
+def main():
+    args = parse_arguments()
+    print('state_num', 'from->to', 'coeff**2', 'eV', 'nm', 'f', '<S**2>', sep=',')
+    parse_file(args)
+
+
+if __name__ == '__main__':
+    main()

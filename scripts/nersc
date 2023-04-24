@@ -14,10 +14,6 @@ fi
 
 
 ping -c1 -t1 cori.nersc.gov&> /dev/null
-if [ "$?" != 0 ]; then
-    echo "U are not in reach of Cori!"
-    exit 1
-fi
 echo "Logging into Cori..."
 ssh -q -i ~/.ssh/nersc taras@cori.nersc.gov 
 exit 0
