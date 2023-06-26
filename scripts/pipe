@@ -1,0 +1,84 @@
+#!/usr/bin/python3
+import os
+import sys
+
+def parse_args():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('geom', help='xyz file with the starting geom', type=open)
+    parser.add_argument('-o', default=sys.stdout, type=argparse.FileType('w'))
+    parser.add_argument('-s', default=2, type=int)
+    parser.add_argument('-p', action='store_true')
+    parser.add_argument('-basis', default=os.environ['HOME']+'/.basis/ca-och', type=open)
+    args = parser.parse_args()
+
+    if args.p:
+        args.p = '_p'
+    else:
+        args.p = ''
+    args.basis.close()
+    args.basis = os.path.abspath(args.basis.name)
+    args.text = args.geom.readlines()
+    args.path = os.path.abspath(args.geom.name)
+    args.geom.close()
+
+    return args
+
+def create_pipe(args):
+    print("""
+#!/bin/bash
+
+set -e
+SCRIPT_DIR=$(dirname $(readlink -f $0))
+cd $SCRIPT_DIR
+    """, file=args.o)
+    print(f'export basis={args.basis}', file=args.o)
+    print(f'mkdir -p gs/ es1/ es2/ es3/ es4/ es5', file=args.o)
+    print(f'cat ~/.route/gs{args.p} | gci {args.path} -o gs.inp -basis $basis -s{args.s}', file=args.o)
+    print('sgaus gs.inp -o gs.sh -t10', file=args.o)
+    print(f"""
+cat << EOF >> gs.sh
+set -e
+cat ~/.route/tddft{args.p} | gci gs.out -o tddft.inp -basis $basis
+cat ~/.route/es1{args.p} | gci gs.out -o es1/es1.inp -basis $basis
+cat ~/.route/es2{args.p} | gci gs.out -o es2/es2.inp -basis $basis
+cat ~/.route/es3{args.p} | gci gs.out -o es3/es3.inp -basis $basis
+cat ~/.route/es4{args.p} | gci gs.out -o es4/es4.inp -basis $basis
+cat ~/.route/es5{args.p} | gci gs.out -o es5/es5.inp -basis $basis
+sgaus tddft.inp -o tddft.sh -t5 -R
+
+sgaus es1/es1.inp -o es1/es1.sh 
+echo "cat ~/.route/es1_freq | gci es1.out -o es1_freq.inp -basis $basis" >> es1/es1.sh
+echo "sgaus es1_freq.inp -o es1_freq.sh -R" >> es1/es1.sh
+sbatch es1/es1.sh
+
+sgaus es2/es2.inp -o es2/es2.sh 
+echo "cat ~/.route/es2_freq | gci es2.out -o es2_freq.inp -basis $basis" >> es2/es2.sh
+echo "sgaus es2_freq.inp -o es2_freq.sh -R" >> es2/es2.sh
+sbatch es2/es2.sh
+
+sgaus es3/es3.inp -o es3/es3.sh 
+echo "cat ~/.route/es3_freq | gci es3.out -o es3_freq.inp -basis $basis" >> es3/es3.sh
+echo "sgaus es3_freq.inp -o es3_freq.sh -R" >> es3/es3.sh
+sbatch es3/es3.sh
+
+sgaus es4/es4.inp -o es4/es4.sh 
+echo "cat ~/.route/es4_freq | gci es4.out -o es4_freq.inp -basis $basis" >> es4/es4.sh
+echo "sgaus es4_freq.inp -o es4_freq.sh -R" >> es4/es4.sh
+sbatch es4/es4.sh
+
+sgaus es5/es5.inp -o es5/es5.sh 
+echo "cat ~/.route/es5_freq | gci es5.out -o es5_freq.inp -basis $basis" >> es5/es5.sh
+echo "sgaus es5_freq.inp -o es5_freq.sh -R" >> es5/es5.sh
+sbatch es5/es5.sh
+EOF
+sbatch gs.sh
+    """, file=args.o)
+    args.o.close()
+
+def main():
+    args = parse_args()
+    create_pipe(args)
+
+if __name__ == '__main__':
+    main()
