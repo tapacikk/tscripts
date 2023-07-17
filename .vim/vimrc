@@ -3,13 +3,13 @@ set hidden
 set laststatus=2
 inoremap kj <Esc>
 set incsearch 
+set ic 
 set wildmenu
 set backspace=indent,eol,start
 set cursorline
 set nobackup
 set noswapfile
 syntax enable
-hi Normal ctermbg=none
 set autoindent expandtab tabstop=4 shiftwidth=4
 nmap <silent> <c-l> :wincmd l<CR>
 nmap <silent> <c-h> :wincmd h<CR>
@@ -20,17 +20,14 @@ syntax enable
 colorscheme dracula
 set scrolloff=15
 noremap <C-n> :set nu!<CR>
-hi Normal ctermbg=none
 nnoremap ;w :w<CR>
 nnoremap ;q :q<CR>
 nnoremap ;s :ls<CR>:b<Space>
 nnoremap ;e :e<Space>
 nnoremap ;; :
 nnoremap 11 :!
-nnoremap - $
 nnoremap <C-t> <C-z>
 nnoremap ;n :NERDTreeToggle<CR>
 let NERDTreeWinSize=20
 let NERDTreeMinimalUI=1
 let NERDTreeMinimalMenu=1
-
