@@ -6,7 +6,6 @@ import sys
 class BadGeomFile(Exception):
     pass
 
-
 def parse_arguments():
     #Parse args
     parser = argparse.ArgumentParser(prog='gci',
@@ -23,10 +22,10 @@ def parse_arguments():
                         help='Carge of the system. Default 0')
     parser.add_argument('-s', default=1, type=int, metavar='MULTIPLICITY',
                         help='Multiplicity of the system. Default 1')
-    parser.add_argument('-c', default=16, type=int, metavar='CORES',
+    parser.add_argument('-c', default=128, type=int, metavar='CORES',
                         help='%%nprocs=c. Default 16')
-    parser.add_argument('-mem', default=3800, type=int,
-                        help='%%mem=mem (in Megabytes). Default 3800')
+    parser.add_argument('-mem', default=64, type=int,
+                        help='%%mem=mem (in Gigabytes). Default 64')
     parser.add_argument('-basis', type=open, metavar='BASISFILE',
                         help='''Path to the file with basis set''')
     parser.add_argument('--xyz', action='store_true',
@@ -66,21 +65,31 @@ def parse_geom(file):
     geom = []
     for l in file:
         if '--------------------' in l: 
-            break
+            return geom
         words = l.split()
         atom = [str(int(words[1]))]
         atom.extend(words[3:])
         geom.append(atom)
-    return geom
 
 
 def parse_gauss(args):
     geometries = []
     energs = []
+    c = 0
     if 'Entering Gaussian System' not in args.geomfile.readline():
         print('Was not able to parse Gaussian output!')
         exit(1)
     #Parse all the geometries in the file
+    if args.route == '#P HF SP':
+        args.route = ''
+        for l in args.geomfile:
+            if '---------------' in l:
+                c += 1
+            if c == 4:
+                break
+            if c == 3 and '-----------' not in l:
+                args.route += l.strip()
+        args.route = args.route.replace('Restart,', '').replace('restart,','')
     for l in args.geomfile:
         if 'SCF Done: ' in l:
             energs.append(float(l.split()[4]))
@@ -98,8 +107,8 @@ def parse_gauss(args):
     args.geometry = geometries[-1]
     args.energy = energs[-1]
     if args.xyz:
-        print(len(args.geometry))
-        print(args.energy)
+        print(len(args.geometry), file=args.o)
+        print(args.energy, file=args.o)
         for atom in args.geometry:
             print(' '.join(atom), file=args.o)
         quit(0)
@@ -118,7 +127,7 @@ def parse_geomfile(args):
 def create_input(args):
     #BEGIN PRINTING FILE
     print('%nproc=', args.c, sep='', file=args.o)
-    print('%mem=', args.mem, 'MB', sep='', file=args.o)
+    print('%mem=', args.mem, 'GB', sep='', file=args.o)
     if args.o != sys.stdout:
         outname = os.path.splitext(os.path.basename(args.o.name))[0]
         print('%chk=', outname, sep='', file=args.o)
