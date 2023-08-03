@@ -43,8 +43,6 @@ cat ~/.route/tddft{args.p} | gci gs.out -o tddft.inp -basis $basis
 cat ~/.route/es1{args.p} | gci gs.out -o es1/es1.inp -basis $basis
 cat ~/.route/es2{args.p} | gci gs.out -o es2/es2.inp -basis $basis
 cat ~/.route/es3{args.p} | gci gs.out -o es3/es3.inp -basis $basis
-cat ~/.route/es4{args.p} | gci gs.out -o es4/es4.inp -basis $basis
-cat ~/.route/es5{args.p} | gci gs.out -o es5/es5.inp -basis $basis
 sgaus tddft.inp -o tddft.sh -t5 -R
 
 sgaus es1/es1.inp -o es1/es1.sh 
@@ -62,15 +60,6 @@ echo "cat ~/.route/es3_freq | gci es3.out -o es3_freq.inp -basis $basis" >> es3/
 echo "sgaus es3_freq.inp -o es3_freq.sh -R" >> es3/es3.sh
 sbatch es3/es3.sh
 
-sgaus es4/es4.inp -o es4/es4.sh 
-echo "cat ~/.route/es4_freq | gci es4.out -o es4_freq.inp -basis $basis" >> es4/es4.sh
-echo "sgaus es4_freq.inp -o es4_freq.sh -R" >> es4/es4.sh
-sbatch es4/es4.sh
-
-sgaus es5/es5.inp -o es5/es5.sh 
-echo "cat ~/.route/es5_freq | gci es5.out -o es5_freq.inp -basis $basis" >> es5/es5.sh
-echo "sgaus es5_freq.inp -o es5_freq.sh -R" >> es5/es5.sh
-sbatch es5/es5.sh
 EOF
 sbatch gs.sh
     """, file=args.o)
