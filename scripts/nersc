@@ -1,19 +1,4 @@
 #!/bin/bash
 
-
-if [ "$1" = "-p" ]; then
-    ping -c1 -t1 perlmutter-p1.nersc.gov &> /dev/null
-    if [ "$?" != 0 ]; then
-        echo "U are not in reach of Perlmutter!"
-        exit 1
-    fi
-    echo "Logging into Perlmutter"
-    ssh -q -i ~/.ssh/nersc taras@perlmutter-p1.nersc.gov 
-    exit 0
-fi
-
-
-ping -c1 -t1 cori.nersc.gov&> /dev/null
-echo "Logging into Cori..."
-ssh -q -i ~/.ssh/nersc taras@cori.nersc.gov 
-exit 0
+echo "Logging into Perlmutter"
+ssh -q -i ~/.ssh/nersc taras@perlmutter-p1.nersc.gov 
