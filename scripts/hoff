@@ -3,11 +3,6 @@
 # Check if we are in the hoffmann
 ping -c1 -t1 hoffman2.idre.ucla.edu &> /dev/null
 
-if [ "$?" != 0 ]; then
-    echo "U are not in reach of Hoffman2!"
-    exit 1
-fi
-
 # Sync the files
 if [ "$1" = "-big" ]; then
     echo "Getting all the files..."

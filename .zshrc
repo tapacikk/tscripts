@@ -1,5 +1,5 @@
 export ZSH="$HOME/.oh-my-zsh"
-ZSH_THEME="eastwood"
+ZSH_THEME="afowler"
 plugins=(git)
 source $ZSH/oh-my-zsh.sh
 bindkey -M viins 'kj' vi-cmd-mode

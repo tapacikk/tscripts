@@ -1,4 +1,4 @@
 #!/bin/bash
 
 # Download stuff from NERSC
-rsync --copy-links -avzu --exclude "scratch" --exclude "sww" --del -e "ssh -l taras -i /Users/taras/.ssh/nersc" perlmutter.nersc.gov:/global/homes/t/taras/work/ /Users/taras/work/nersc/ 
+rsync --copy-links -avzu --exclude "*.int" --exclude "scratch" --exclude "sww" --del -e "ssh -l taras -i /Users/taras/.ssh/nersc" perlmutter.nersc.gov:/global/homes/t/taras/work/ /Users/taras/work/nersc/ 
