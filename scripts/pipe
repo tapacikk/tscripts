@@ -4,11 +4,15 @@ import sys
 
 def parse_args():
     import argparse
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Create a pipeline for FCF calculation and run it",
+                                     epilog="Have a great day.",
+                                     prog='pipe')
     parser.add_argument('geom', help='xyz file with the starting geom', type=open)
-    parser.add_argument('-o', default=sys.stdout, type=argparse.FileType('w'))
-    parser.add_argument('-s', default=2, type=int)
-    parser.add_argument('-p', action='store_true')
+    parser.add_argument('-o', default=sys.stdout, type=argparse.FileType('w'),
+                        help="Output")
+    parser.add_argument('-s', default=2, type=int, help="Spin")
+    parser.add_argument('-e', default=4, type=int, help="Number of excited states to do.")
+    parser.add_argument('-p', action='store_true', help="Use _p in route, i.e. pseudo=read")
     parser.add_argument('-basis', default=os.environ['HOME']+'/.basis/ca-och', type=open)
     args = parser.parse_args()
 
@@ -25,48 +29,49 @@ def parse_args():
     return args
 
 def create_pipe(args):
-    print("""
-#!/bin/bash
-
-set -e
-SCRIPT_DIR=$(dirname $(readlink -f $0))
-cd $SCRIPT_DIR
-    """, file=args.o)
+    print('#!/bin/bash', file=args.o)
+    print('SCRIPT_DIR=$(dirname $(readlink -f $0))', file=args.o)
+    print('cd $SCRIPT_DIR', file=args.o)
     print(f'export basis={args.basis}', file=args.o)
-    print(f'mkdir -p es1/ es2/ es3/ es4/ es5/ fcf/', file=args.o)
+    print(f'export max_states={args.e}', file=args.o)
+    print('for ((i = 1 ; i <= $max_states ; i++)); do mkdir -p es$i; done', file=args.o)
+    print(f'mkdir -p fcf/', file=args.o)
     print(f'cat ~/.route/gs{args.p} | gci {args.path} -o gs.inp -basis $basis -s{args.s}', file=args.o)
     print('sgaus gs.inp -o gs.sh -t10', file=args.o)
+    print(f'p={args.p}', file=args.o)
     print("""
 cat << EOF >> gs.sh
-set -e
+p=$p
 
 pushd fcf
 ln -s ../gs.chk ./gs.chk
 popd
 
 # TDDFT
-cat ~/.route/tddft | gci gs.out -o tddft.inp -basis $basis
+cat ~/.route/tddft\$p | gci gs.out -o tddft.inp -basis $basis
 sgaus tddft.inp -o tddft.sh -t10 -R
 
 # EXCITED STATES
 
-for i in {1..3}; do
+for ((i = 1 ; i <= $max_states ; i++)); do
+    cat ~/.route/es\${i}\$p | gci gs.out -o es\${i}/es\${i}.inp -basis $basis
+    touch es\${i}/es\${i}_freq.inp
+    sgaus es\$i/es\${i}.inp -o es\${i}/es\${i}.sh 
+    sgaus es\${i}/es\${i}_freq.inp -o es\${i}/es\${i}_freq.sh
 
-    cat ~/.route/es${i}{args.p} | gci gs.out -o es${i}/es${i}.inp -basis $basis
-    touch es${i}/es${i}_freq.inp
-    sgaus es$i/es${i}.inp -o es${i}/es${i}.sh 
-    sgaus es${i}/es${i}_freq.inp -o es${i}/es${i}_freq.sh
+    echo "cat ~/.route/es\${i}_freq\$p | gci es\${i}.out -o es\${i}_freq.inp -basis $basis" >> es\${i}/es\${i}.sh
 
-    echo "cat ~/.route/es${i}_freq | gci es${i}.out -o es${i}_freq.inp -basis $basis" >> es${i}/es${i}.sh
-    echo "sbatch es${i}_freq.sh"                                                      >> es${i}/es${i}.sh
-    echo "pushd ../fcf"                                                               >> es${i}/es${i}_freq.sh
-    echo "ln -s ../es${i}/es${i}_freq.chk ./es${i}.chk"                               >> es${i}/es${i}_freq.sh
-    echo "fcf gs.chk es${i}.chk -s 3 > fcf${i}.inp"                                   >> es${i}/es${i}_freq.sh
-    echo "g16 < fcf${i}.inp > fcf${i}.out"                                            >> es${i}/es${i}_freq.sh
-    echo "popd"                                                                       >> es${i}/es${i}_freq.sh
+    echo "sbatch es\${i}_freq.sh"                              >> es\${i}/es\${i}.sh
+    echo "pushd ../fcf"                                        >> es\${i}/es\${i}_freq.sh
+    echo "ln -s ../es\${i}/es\${i}_freq.chk ./es\${i}.chk"     >> es\${i}/es\${i}_freq.sh
+    echo "cfcf gs.chk es\${i}.chk -s 3 > fcf\${i}.inp"         >> es\${i}/es\${i}_freq.sh
+    echo "g16 < fcf\${i}.inp > fcf\${i}.out"                   >> es\${i}/es\${i}_freq.sh
+    echo "dip=\$(gparse ../es\${i}/es\${i}_freq.out -dip \$i)" >> es\${i}/es\${i}_freq.sh
+    echo "fcf fcf\${i}.out \$dip > fcf\${i}.csv"               >> es\${i}/es\${i}_freq.sh
+    echo "popd"                                                >> es\${i}/es\${i}_freq.sh
 
 
-    sbatch es${i}/es${i}.sh
+    sbatch es\${i}/es\${i}.sh
 done
 
 EOF
