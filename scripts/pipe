@@ -66,7 +66,7 @@ for ((i = 1 ; i <= $max_states ; i++)); do
     echo "ln -s ../es\${i}/es\${i}_freq.chk ./es\${i}.chk"     >> es\${i}/es\${i}_freq.sh
     echo "cfcf gs.chk es\${i}.chk -s 3 > fcf\${i}.inp"         >> es\${i}/es\${i}_freq.sh
     echo "g16 < fcf\${i}.inp > fcf\${i}.out"                   >> es\${i}/es\${i}_freq.sh
-    echo "dip=\$(gparse ../es\${i}/es\${i}_freq.out -dip \$i)" >> es\${i}/es\${i}_freq.sh
+    echo "dip=\\\\\\$(gparse ../es\${i}/es\${i}_freq.out -dip \$i)" >> es\${i}/es\${i}_freq.sh
     echo "fcf fcf\${i}.out \$dip > fcf\${i}.csv"               >> es\${i}/es\${i}_freq.sh
     echo "popd"                                                >> es\${i}/es\${i}_freq.sh
 
