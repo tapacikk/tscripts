@@ -11,6 +11,7 @@ def parse_args():
     parser.add_argument('-o', default=sys.stdout, type=argparse.FileType('w'),
                         help="Output")
     parser.add_argument('-s', default=2, type=int, help="Spin")
+    parser.add_argument('--symm', action='store_true', help="Enforce symmetry")
     parser.add_argument('-e', default=4, type=int, help="Number of excited states to do.")
     parser.add_argument('-p', action='store_true', help="Use _p in route, i.e. pseudo=read")
     parser.add_argument('-basis', default=os.environ['HOME']+'/.basis/ca-och', type=open)
@@ -20,6 +21,7 @@ def parse_args():
         args.p = '_p'
     else:
         args.p = ''
+    args.symm = '--symm' if args.symm else ''
     args.basis.close()
     args.basis = os.path.abspath(args.basis.name)
     args.text = args.geom.readlines()
@@ -34,48 +36,53 @@ def create_pipe(args):
     print('cd $SCRIPT_DIR', file=args.o)
     print(f'export basis={args.basis}', file=args.o)
     print(f'export max_states={args.e}', file=args.o)
+    print(f'export symm={args.symm}', file=args.o)
     print('for ((i = 1 ; i <= $max_states ; i++)); do mkdir -p es$i; done', file=args.o)
     print(f'mkdir -p fcf/', file=args.o)
-    print(f'cat ~/.route/gs{args.p} | gci {args.path} -o gs.inp -basis $basis -s{args.s}', file=args.o)
-    print('sgaus gs.inp -o gs.sh -t10', file=args.o)
+    print(f'cat ~/.route/gs{args.p} | gci {args.path} -o gs.inp -basis $basis -s{args.s} {args.symm}', file=args.o)
+    print('sgaus gs.inp -o gs.slm -t10', file=args.o)
     print(f'p={args.p}', file=args.o)
+    print(f's={args.s}', file=args.o)
+    print(f'symm={args.symm}', file=args.o)
     print("""
-cat << EOF >> gs.sh
+cat << EOF >> gs.slm
 p=$p
+s=$s
+symm=$symm
 
 pushd fcf
 ln -s ../gs.chk ./gs.chk
 popd
 
 # TDDFT
-cat ~/.route/tddft\$p | gci gs.out -o tddft.inp -basis $basis
-sgaus tddft.inp -o tddft.sh -t10 -R
+cat ~/.route/tddft\$p | gci gs.out -o tddft.inp -basis $basis $symm
+sgaus tddft.inp -o tddft.slm -t10 -R
 
 # EXCITED STATES
 
 for ((i = 1 ; i <= $max_states ; i++)); do
-    cat ~/.route/es\${i}\$p | gci gs.out -o es\${i}/es\${i}.inp -basis $basis
+    cat ~/.route/es\${i}\$p | gci gs.out -o es\${i}/es\${i}.inp -basis $basis $symm
     touch es\${i}/es\${i}_freq.inp
-    sgaus es\$i/es\${i}.inp -o es\${i}/es\${i}.sh 
-    sgaus es\${i}/es\${i}_freq.inp -o es\${i}/es\${i}_freq.sh
+    sgaus es\$i/es\${i}.inp -o es\${i}/es\${i}.slm 
+    sgaus es\${i}/es\${i}_freq.inp -o es\${i}/es\${i}_freq.slm
 
-    echo "cat ~/.route/es\${i}_freq\$p | gci es\${i}.out -o es\${i}_freq.inp -basis $basis" >> es\${i}/es\${i}.sh
+    echo "cat ~/.route/es\${i}_freq\$p | gci es\${i}.out -o es\${i}_freq.inp -basis $basis $symm" >> es\${i}/es\${i}.slm
 
-    echo "sbatch es\${i}_freq.sh"                              >> es\${i}/es\${i}.sh
-    echo "pushd ../fcf"                                        >> es\${i}/es\${i}_freq.sh
-    echo "ln -s ../es\${i}/es\${i}_freq.chk ./es\${i}.chk"     >> es\${i}/es\${i}_freq.sh
-    echo "cfcf gs.chk es\${i}.chk -s 3 > fcf\${i}.inp"         >> es\${i}/es\${i}_freq.sh
-    echo "g16 < fcf\${i}.inp > fcf\${i}.out"                   >> es\${i}/es\${i}_freq.sh
-    echo "dip=\\\\\\$(gparse ../es\${i}/es\${i}_freq.out -dip \$i)" >> es\${i}/es\${i}_freq.sh
-    echo "fcf fcf\${i}.out \$dip > fcf\${i}.csv"               >> es\${i}/es\${i}_freq.sh
-    echo "popd"                                                >> es\${i}/es\${i}_freq.sh
+    echo "sbatch es\${i}_freq.slm"                              >> es\${i}/es\${i}.slm
+    echo "pushd ../fcf"                                        >> es\${i}/es\${i}_freq.slm
+    echo "ln -s ../es\${i}/es\${i}_freq.chk ./es\${i}.chk"     >> es\${i}/es\${i}_freq.slm
+    echo "cfcf gs.chk es\${i}.chk -s $s > fcf\${i}.inp"         >> es\${i}/es\${i}_freq.slm
+    echo "g16 < fcf\${i}.inp > fcf\${i}.out"                   >> es\${i}/es\${i}_freq.slm
+    echo "dip=\\\\\\$(gparse ../es\${i}/es\${i}_freq.out -dip \$i)" >> es\${i}/es\${i}_freq.slm
+    echo "fcf fcf\${i}.out \\\\\\$dip > fcf\${i}.csv"               >> es\${i}/es\${i}_freq.slm
+    echo "popd"                                                >> es\${i}/es\${i}_freq.slm
 
 
-    sbatch es\${i}/es\${i}.sh
+    sbatch es\${i}/es\${i}.slm
 done
 
 EOF
-sbatch gs.sh
+sbatch gs.slm
     """, file=args.o)
     args.o.close()
 
