@@ -1,12 +1,21 @@
 #!/bin/bash
 
-# Sync the files
-if [ "$1" = "-big" ]; then
-    echo "Getting all the files..."
-    rsync -ahvzu --del --exclude "cas" --exclude "*.gjf" --exclude "Gau*" --exclude "core*" --exclude "*.rwf" --exclude "*.chk" khvorost@bridges2.psc.edu:/jet/home/khvorost/work/ /Users/taras/work/bri
-    exit 0
-fi
 
-
-rsync -ahvzu --del --exclude "fort.7" --exclude "*.com" --exclude "*.sh" --exclude "bdf" --exclude "cas" --exclude "*.gjf" --exclude "Gau*" --exclude "core*" --exclude "*.rwf" --exclude "*.chk" khvorost@bridges2.psc.edu:/jet/home/khvorost/work/ /Users/taras/work/bri
+rsync  \
+      -rltppv -hu \
+      --exclude "fort.7" \
+      --exclude "*.fchk" \
+      --exclude "old.tar" \
+      --exclude "quantics" \
+      --exclude "*.com" \
+      --exclude ".git" \
+      --exclude "*.sh" \
+      --exclude "bdf" \
+      --exclude "cas" \
+      --exclude "*.gjf" \
+      --exclude "Gau*" \
+      --exclude "core*" \
+      --exclude "*.rwf" \
+      --exclude "*.chk" \
+      khvorost@bridges2.psc.edu:/ocean/projects/che230036p/khvorost/ /Users/taras/work/bri
 
