@@ -8,16 +8,14 @@ def parse_arguments():
     #Parse args
     parser = argparse.ArgumentParser(prog='fcf',
                                      description='Create FCF input')
-    parser.add_argument('init_state_chk', type=open,
-                        help='''CHK file of the init state frequencies''')
-    parser.add_argument('fin_state_chk', type=open,
-                        help='''CHK file of the final state frequencies''')
+    parser.add_argument('gs_chk', type=open,
+                        help='''Path to chk file with ground state frequencies''')
+    parser.add_argument('es_chk', type=open,
+                        help='''Path to chk file with excited state frequencies''')
     parser.add_argument('-ch', default=0, type=int, metavar='CHARGE',
                         help='Carge of the system. Default 0')
     parser.add_argument('-s', default=1, type=int, metavar='MULTIPLICITY',
                         help='Multiplicity of the system. Default 1')
-    parser.add_argument('-a', action='store_true',
-                        help='''Do the analysis after running fcf calc''')
     parser.add_argument('-o', nargs='?', type=argparse.FileType('w'),
                         metavar='OUTFILE', default=sys.stdout,
                         help='File to write gaussian input to\
