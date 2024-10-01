@@ -30,7 +30,7 @@ def parse_arguments():
 def get_roots(args):
     roots = {}
     flag_line = 'Eigenvalues of complex Hamiltonian' if args.so else 'SPIN-FREE ENERGIES:'
-    breakline = 'Matrix' if args.so else 'Dipole'
+    breakline = 'Weights' if args.so else 'Dipole'
     started = 0
     EMIN = 0
     for line in args.rassi_output:
