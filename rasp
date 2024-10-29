@@ -21,8 +21,8 @@ def parse_arguments():
                         help='Units for the specturm. Default nm')
     parser.add_argument('-so', action='store_true',
                         help='Plot Spin-Orbit states. Default off')
-    parser.add_argument('--plot', action='store_true',
-                        help='Generate plotting script for MatPlotLib')
+    parser.add_argument('-py', action='store_true',
+                        help='Output in python format')
     args = parser.parse_args()
     args.filename = args.rassi_output.name
     return args
@@ -76,20 +76,35 @@ def get_spectrum(args):
             e = {'ev': delta_e_ev,
                  'cm': delta_e_cm, 
                  'nm': delta_e_nm}
-            spectrum[e[args.units]] = (osc_str, a_x, a_y, a_z, f'{initial}->{final}')
+            #spectrum[e[args.units]] = (osc_str, a_x, a_y, a_z, )
+            spectrum[f'{initial}->{final}'] = (e[args.units], osc_str, a_x, a_y, a_z)
         except ValueError:
             continue
-    args.spectrum = {k: v for k, v in sorted(spectrum.items(), key=lambda item: item[0])}
+    #args.spectrum = {k: v for k, v in sorted(spectrum.items(), key=lambda item: item[0])}
+    args.spectrum = {k: v for k, v in sorted(spectrum.items(), key=lambda item: item[1][0])}
     return spectrum
+
+
+def print_spectrum(args):
+    if not args.py:
+        print(f'transition', f'energy_{args.units}','oscillator strength', file=args.o, sep=',')
+        for k, v in args.spectrum.items():
+            print(k, v[0], v[1], file=args.o, sep=',')
+        return
+    print(f'data_{args.spectype} = ', '{', file=args.o)
+    for k, v in args.spectrum.items():
+        print(' '*4, f"'{k}' : ", 
+              '{', 
+              f"'energy_{args.units}': {v[0]}, 'oscillator_strength': {v[1]},", 
+              file=args.o)
+    print('}', file=args.o)
 
 def main():
     args = parse_arguments()
     roots = get_roots(args)
     get_spectrum(args)
     args.rassi_output.close()
-    print(f'transition', f'energy_{args.units}','oscillator strength', file=args.o, sep=',')
-    for k, v in args.spectrum.items():
-        print(v[-1], k, v[0], file=args.o, sep=',')
+    print_spectrum(args)
 
 
 if __name__ == '__main__':
