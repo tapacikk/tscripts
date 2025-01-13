@@ -1,4 +1,0 @@
-#!/bin/bash
-
-echo "Logging into Perlmutter"
-ssh -q -i ~/.ssh/nersc taras@perlmutter-p1.nersc.gov 
