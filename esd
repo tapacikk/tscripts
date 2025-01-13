@@ -1,0 +1,128 @@
+#!/usr/bin/env python3
+import os 
+import sys
+from argparse import ArgumentTypeError, ArgumentParser, FileType
+import tempfile
+import subprocess
+
+VERSION = 0.1
+
+def parse_arguments():
+    global VERSION
+    def is_spectrum(spec_file):
+        with open(spec_file, 'r') as f:
+            fline = f.readline()
+            if 'IntensityFC' not in fline:
+                raise ArgumentTypeError('Wrong file supplied. Only ESD.spectrum files are supported')
+        return os.path.abspath(spec_file)
+            
+    parser = ArgumentParser(prog='esd',
+                            description='ESD: parse the output \
+                            spectrum of the ORCA 6.0.1 ESD module\n\
+                            outputs in matplotlib script')
+
+    parser.add_argument('spec_file', 
+                        help='''Output file of the ESD module''',
+                        type=is_spectrum)
+
+    parser.add_argument('--version', 
+                        action='version', 
+                        version='%(prog)s '+str(VERSION))
+
+    parser.add_argument('-o', 
+                        nargs='?', 
+                        type=FileType('w'),
+                        metavar='OUTFILE', 
+                        default=sys.stdout,
+                        help='Defaults to STDOUT')
+
+    parser.add_argument('-u', 
+                        choices=['cm', 'nm'], 
+                        metavar='UNIT', 
+                        default='cm',
+                        help='Units of the spectrum INPUT\
+                              Default cm-1\
+                              Output is always in cm-1')
+
+    parser.add_argument('--exec', 
+                        action='store_true',
+                        help='Execute produced code right away.')
+
+    parser.add_argument('--csv', #TODO
+                        type=FileType('w'),
+                        help='Save the csv with the spectrums')
+    return parser.parse_args()
+ 
+
+def read_spectrum(args):
+    """Reads spectrum from the spec_file
+       Creates a csv file"""
+    args.csvfile = os.path.abspath(args.spec_file+'.csv')
+    with open(args.spec_file, 'r') as f:
+        text = [_ for _ in f if _]
+    with open(args.csvfile, 'w') as f:
+        for l in text:
+            print(','.join(l.split('\t\t')), file=f, end='')
+
+
+def write_script(args):
+    """
+    Writes a python/matplotlib script with the data from spec_file
+    """
+    args.BOILERPLATE='''#!/usr/bin/env python3
+from matplotlib import pyplot as plt
+import pandas
+'''
+    print(args.BOILERPLATE, file=args.o)
+    print(f'''
+with open('{args.spec_file}', 'r') as f:
+    text = [_ for _ in f if _]
+temp_csv = tempfile.NamedTemporaryFile(mode='w')
+for l in text:
+    print(','.join(l.split('\\t\\t')), file=temp_csv, end='')
+temp_csv.flush()''', file=args.o)
+    print(f'spectrum=pandas.read_csv(temp_csv)', file=args.o)
+    print('temp_csv.close()', file=args.o)
+
+    args.SCRIPT_TEXT1='''
+zi = spectrum.idxmax(axis=0)['\\tTotalSpectrum']
+max_intensity = float(spectrum['\\tTotalSpectrum'].iloc[[zi]])'''
+    args.SCRIPT_TEXT2='''
+spectrum['Energy'] = spectrum['Energy'] - float(spectrum['Energy'].iloc[[zi]])
+for data in ('\\tTotalSpectrum', 'IntensityFC', 'IntensityHT'):
+    spectrum[data] = spectrum[data] / max_intensity
+plt.plot(spectrum["Energy"], spectrum["\\tTotalSpectrum"], label='total')
+plt.plot(spectrum["Energy"], spectrum["IntensityHT"], label='ht')
+ax = plt.gca()
+ax.set_xlim(-1000, 10)
+ax.set_ylim(-0.01, 0.2)
+plt.legend()
+plt.show()
+'''
+    print(args.SCRIPT_TEXT1, file=args.o)
+    if args.u == 'nm':
+        print("spectrum['Energy'] = 1 / spectrum['Energy'] * 1e7", file=args.o)
+    print(args.SCRIPT_TEXT2, file=args.o)
+
+
+def execute_script(args):
+    with tempfile.NamedTemporaryFile(mode='w') as tmp_script:
+        tmp_script.write(args.BOILERPLATE)
+        tmp_script.write(f'spectrum=pandas.read_csv("{args.csvfile}")')
+        tmp_script.write(args.SCRIPT_TEXT1)
+        if args.u == 'nm':
+            tmp_script.write("spectrum['Energy'] = 1 / spectrum['Energy'] * 1e7")
+        tmp_script.write(args.SCRIPT_TEXT2)
+        tmp_script.flush()
+        p = subprocess.run(['python3', str(tmp_script.name)])
+
+def main():
+    args = parse_arguments()
+    read_spectrum(args)
+    write_script(args)
+    if args.exec:
+        execute_script(args)
+
+
+if __name__ == '__main__':
+    main()
