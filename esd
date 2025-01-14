@@ -1,11 +1,44 @@
 #!/usr/bin/env python3
-import os 
+import os
 import sys
 from argparse import ArgumentTypeError, ArgumentParser, FileType
 import tempfile
 import subprocess
+import pandas
+from matplotlib import pyplot as plt
 
-VERSION = 0.1
+VERSION = 0.2
+
+
+BOILERPLATE='''#!/usr/bin/env python3
+from matplotlib import pyplot as plt
+import pandas
+import tempfile
+'''
+SCRIPT_TEXT='''
+temp_csv = tempfile.NamedTemporaryFile(mode='w')
+with open(temp_csv.name, 'w') as f:
+    for l in text:
+        print(','.join(l.split('\t\t')), file=f, end='')
+with open(temp_csv.name, 'r') as f:
+    spectrum=pandas.read_csv(f)
+
+zi = spectrum.idxmax(axis=0)['\tTotalSpectrum']
+max_intensity = float(spectrum['\tTotalSpectrum'].iloc[[zi]])
+
+spectrum['Energy'] = spectrum['Energy'] - float(spectrum['Energy'].iloc[[zi]])
+for data in ('\tTotalSpectrum', 'IntensityFC', 'IntensityHT'):
+    spectrum[data] = spectrum[data] / max_intensity
+plt.plot(spectrum["Energy"], spectrum["\tTotalSpectrum"], label='total')
+plt.plot(spectrum["Energy"], spectrum["IntensityHT"], label='ht')
+ax = plt.gca()
+ax.set_xlim(-2000, 10)
+ax.set_ylim(-0.01, 0.2)
+'''
+SCRIPT_FINALE='''
+plt.legend()
+plt.show()
+'''
 
 def parse_arguments():
     global VERSION
@@ -15,113 +48,106 @@ def parse_arguments():
             if 'IntensityFC' not in fline:
                 raise ArgumentTypeError('Wrong file supplied. Only ESD.spectrum files are supported')
         return os.path.abspath(spec_file)
-            
+
     parser = ArgumentParser(prog='esd',
                             description='ESD: parse the output \
                             spectrum of the ORCA 6.0.1 ESD module\n\
                             outputs in matplotlib script')
 
-    parser.add_argument('spec_file', 
+    parser.add_argument('spec_file',
                         help='''Output file of the ESD module''',
                         type=is_spectrum)
 
-    parser.add_argument('--version', 
-                        action='version', 
+    parser.add_argument('--version',
+                        action='version',
                         version='%(prog)s '+str(VERSION))
 
-    parser.add_argument('-o', 
-                        nargs='?', 
+    parser.add_argument('-o',
+                        nargs='?',
                         type=FileType('w'),
-                        metavar='OUTFILE', 
+                        metavar='OUTFILE',
                         default=sys.stdout,
                         help='Defaults to STDOUT')
 
-    parser.add_argument('-u', 
-                        choices=['cm', 'nm'], 
-                        metavar='UNIT', 
+    parser.add_argument('-u',
+                        choices=['cm', 'nm'],
+                        metavar='UNIT',
                         default='cm',
                         help='Units of the spectrum INPUT\
                               Default cm-1\
                               Output is always in cm-1')
 
-    parser.add_argument('--exec', 
+    parser.add_argument('--exec',
                         action='store_true',
                         help='Execute produced code right away.')
+
+    parser.add_argument('--freqs',
+                        help='Parse the frequencies from the output and add \
+                              them to the graph as vertical lines',
+                        metavar="ORCA_OUTPUT")
 
     parser.add_argument('--csv', #TODO
                         type=FileType('w'),
                         help='Save the csv with the spectrums')
     return parser.parse_args()
- 
 
-def read_spectrum(args):
-    """Reads spectrum from the spec_file
-       Creates a csv file"""
-    args.csvfile = os.path.abspath(args.spec_file+'.csv')
-    with open(args.spec_file, 'r') as f:
-        text = [_ for _ in f if _]
-    with open(args.csvfile, 'w') as f:
-        for l in text:
-            print(','.join(l.split('\t\t')), file=f, end='')
+
+def parse_orca_freqs(args):
+    freqs = []
+    flag = 0
+    with open(args.freqs, 'r') as f:
+        for l in f:
+            if 'NORMAL MODES' in l and flag:
+                break
+            if 'VIBRATIONAL FREQUENCIES' in l:
+                flag = 1
+            if flag:
+                freqs.append(l)
+    freqs = freqs[11:-3]
+    freqs = list([float(l.split()[-2]) for l in freqs])
+    args.FREQS_PART = f'''{freqs=}
+for i, f in enumerate(freqs):
+    ax.axvline(-f, linestyle='--', ymin=0, ymax=0.5, linewidth=0.5)
+    ax.text(-f, 0.1, 'v = %s'%(i+1), color='blue', fontsize=7, rotation='vertical')'''
+    return freqs
 
 
 def write_script(args):
     """
     Writes a python/matplotlib script with the data from spec_file
     """
-    args.BOILERPLATE='''#!/usr/bin/env python3
-from matplotlib import pyplot as plt
-import pandas
-'''
-    print(args.BOILERPLATE, file=args.o)
-    print(f'''
-with open('{args.spec_file}', 'r') as f:
-    text = [_ for _ in f if _]
-temp_csv = tempfile.NamedTemporaryFile(mode='w')
-for l in text:
-    print(','.join(l.split('\\t\\t')), file=temp_csv, end='')
-temp_csv.flush()''', file=args.o)
-    print(f'spectrum=pandas.read_csv(temp_csv)', file=args.o)
-    print('temp_csv.close()', file=args.o)
-
-    args.SCRIPT_TEXT1='''
-zi = spectrum.idxmax(axis=0)['\\tTotalSpectrum']
-max_intensity = float(spectrum['\\tTotalSpectrum'].iloc[[zi]])'''
-    args.SCRIPT_TEXT2='''
-spectrum['Energy'] = spectrum['Energy'] - float(spectrum['Energy'].iloc[[zi]])
-for data in ('\\tTotalSpectrum', 'IntensityFC', 'IntensityHT'):
-    spectrum[data] = spectrum[data] / max_intensity
-plt.plot(spectrum["Energy"], spectrum["\\tTotalSpectrum"], label='total')
-plt.plot(spectrum["Energy"], spectrum["IntensityHT"], label='ht')
-ax = plt.gca()
-ax.set_xlim(-1000, 10)
-ax.set_ylim(-0.01, 0.2)
-plt.legend()
-plt.show()
-'''
-    print(args.SCRIPT_TEXT1, file=args.o)
-    if args.u == 'nm':
-        print("spectrum['Energy'] = 1 / spectrum['Energy'] * 1e7", file=args.o)
-    print(args.SCRIPT_TEXT2, file=args.o)
+    global BOILERPLATE, SCRIPT_TEXT
+    print(BOILERPLATE, file=args.o)
+    print(f"with open('{args.spec_file}', 'r') as f:", file=args.o)
+    print('    text = [_ for _ in f if _]', file=args.o)
+    print(SCRIPT_TEXT, file=args.o)
+    if args.freqs:
+        print(args.FREQS_PART, file=args.o)
+    print(SCRIPT_FINALE, file=args.o)
 
 
 def execute_script(args):
+    global BOILERPLATE, SCRIPT_TEXT
     with tempfile.NamedTemporaryFile(mode='w') as tmp_script:
-        tmp_script.write(args.BOILERPLATE)
-        tmp_script.write(f'spectrum=pandas.read_csv("{args.csvfile}")')
-        tmp_script.write(args.SCRIPT_TEXT1)
-        if args.u == 'nm':
-            tmp_script.write("spectrum['Energy'] = 1 / spectrum['Energy'] * 1e7")
-        tmp_script.write(args.SCRIPT_TEXT2)
+        tmp_script.write(BOILERPLATE)
+        tmp_script.write(f"with open('{args.spec_file}', 'r') as f:")
+        tmp_script.write('    text = [_ for _ in f if _]')
+        tmp_script.write(SCRIPT_TEXT)
+        if args.freqs:
+            tmp_script.write(args.FREQS_PART)
+        tmp_script.write(SCRIPT_FINALE)
         tmp_script.flush()
         p = subprocess.run(['python3', str(tmp_script.name)])
 
+
 def main():
     args = parse_arguments()
-    read_spectrum(args)
-    write_script(args)
+    if args.freqs:
+        parse_orca_freqs(args)
     if args.exec:
         execute_script(args)
+        exit(0)
+    write_script(args)
 
 
 if __name__ == '__main__':
