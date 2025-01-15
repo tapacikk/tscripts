@@ -7,7 +7,7 @@ import subprocess
 import pandas
 from matplotlib import pyplot as plt
 
-VERSION = 0.2
+VERSION = 0.3
 
 
 BOILERPLATE='''#!/usr/bin/env python3
@@ -29,12 +29,14 @@ max_intensity = float(spectrum['\tTotalSpectrum'].iloc[[zi]])
 spectrum['Energy'] = spectrum['Energy'] - float(spectrum['Energy'].iloc[[zi]])
 for data in ('\tTotalSpectrum', 'IntensityFC', 'IntensityHT'):
     spectrum[data] = spectrum[data] / max_intensity
-plt.plot(spectrum["Energy"], spectrum["\tTotalSpectrum"], label='total')
-plt.plot(spectrum["Energy"], spectrum["IntensityHT"], label='ht')
+plt.plot(spectrum["Energy"], spectrum["\tTotalSpectrum"], label='total_esd')
+plt.plot(spectrum["Energy"], spectrum["IntensityHT"], label='ht_esd')
 ax = plt.gca()
 ax.set_xlim(-2000, 10)
 ax.set_ylim(-0.01, 0.2)
 '''
+FREQS_PART=''
+EZFCF_PART=''
 SCRIPT_FINALE='''
 plt.legend()
 plt.show()
@@ -46,7 +48,8 @@ def parse_arguments():
         with open(spec_file, 'r') as f:
             fline = f.readline()
             if 'IntensityFC' not in fline:
-                raise ArgumentTypeError('Wrong file supplied. Only ESD.spectrum files are supported')
+                raise ArgumentTypeError('Wrong file supplied. \
+                                         Only ESD.spectrum files are supported')
         return os.path.abspath(spec_file)
 
     parser = ArgumentParser(prog='esd',
@@ -86,13 +89,43 @@ def parse_arguments():
                               them to the graph as vertical lines',
                         metavar="ORCA_OUTPUT")
 
-    parser.add_argument('--csv', #TODO
-                        type=FileType('w'),
-                        help='Save the csv with the spectrums')
-    return parser.parse_args()
+    parser.add_argument('--ezfcf', 
+                        help='ezfcf.spectrum_duchynsky file \
+                             to parse and add onto the graph',
+                        type=os.path.abspath)
+    args = parser.parse_args()
+    if args.exec and args.o == sys.stdout:
+        args.o = tempfile.NamedTemporaryFile(mode='w')
+    return args
 
+
+def parse_ezfcf_spectrum(args):
+    global EZFCF_PART
+    # check if exists
+    if not os.path.isfile(args.ezfcf):
+        raise FileNotFoundError
+    EZFCF_PART=f'''
+# EZFCF PART
+with open('{args.ezfcf}', 'r') as f:
+    text_ezfcf = f.readlines()
+temp_csv_fcf = tempfile.NamedTemporaryFile(mode='w')
+with open(temp_csv_fcf.name, 'w') as f:
+    f.write('ev,intensity\\n')
+    for l in text_ezfcf:
+        f.write(','.join(l.split()[:2])+'\\n')
+with open(temp_csv_fcf.name, 'r') as f:
+    df_fcf=pandas.read_csv(f)
+df_fcf.ev = df_fcf.ev - float(df_fcf.ev.iloc[[0]])
+df_fcf.ev = -(df_fcf.ev * 8065.541154) #convert to cm-1
+zi = float(df_fcf.intensity.iloc[[0]])
+df_fcf.intensity = df_fcf.intensity / zi
+plt.vlines(0, ymin=0, ymax=0, color='r', label='ezfcf')
+for idx,row in df_fcf.iterrows():
+    plt.vlines(row.ev, linestyle='-', ymin=0, ymax=row.intensity, linewidth=1.5, color='r')
+'''
 
 def parse_orca_freqs(args):
+    global FREQS_PART
     freqs = []
     flag = 0
     with open(args.freqs, 'r') as f:
@@ -105,9 +138,9 @@ def parse_orca_freqs(args):
                 freqs.append(l)
     freqs = freqs[11:-3]
     freqs = list([float(l.split()[-2]) for l in freqs])
-    args.FREQS_PART = f'''{freqs=}
+    FREQS_PART = f'''{freqs=}
 for i, f in enumerate(freqs):
-    ax.axvline(-f, linestyle='--', ymin=0, ymax=0.5, linewidth=0.5)
+    plt.vlines(-f, linestyle='--', ymin=0, ymax=0.075, linewidth=0.5)
     ax.text(-f, 0.1, 'v = %s'%(i+1), color='blue', fontsize=7, rotation='vertical')'''
     return freqs
 
@@ -116,38 +149,29 @@ def write_script(args):
     """
     Writes a python/matplotlib script with the data from spec_file
     """
-    global BOILERPLATE, SCRIPT_TEXT
+    global BOILERPLATE, SCRIPT_TEXT, FREQS_PART, EZFCF_PART
     print(BOILERPLATE, file=args.o)
     print(f"with open('{args.spec_file}', 'r') as f:", file=args.o)
     print('    text = [_ for _ in f if _]', file=args.o)
     print(SCRIPT_TEXT, file=args.o)
     if args.freqs:
-        print(args.FREQS_PART, file=args.o)
+        print(FREQS_PART, file=args.o)
+    if args.ezfcf:
+        print(EZFCF_PART, file=args.o)
     print(SCRIPT_FINALE, file=args.o)
-
-
-def execute_script(args):
-    global BOILERPLATE, SCRIPT_TEXT
-    with tempfile.NamedTemporaryFile(mode='w') as tmp_script:
-        tmp_script.write(BOILERPLATE)
-        tmp_script.write(f"with open('{args.spec_file}', 'r') as f:")
-        tmp_script.write('    text = [_ for _ in f if _]')
-        tmp_script.write(SCRIPT_TEXT)
-        if args.freqs:
-            tmp_script.write(args.FREQS_PART)
-        tmp_script.write(SCRIPT_FINALE)
-        tmp_script.flush()
-        p = subprocess.run(['python3', str(tmp_script.name)])
-
+    if args.exec:
+        args.o.flush()
 
 def main():
     args = parse_arguments()
     if args.freqs:
         parse_orca_freqs(args)
-    if args.exec:
-        execute_script(args)
-        exit(0)
+    if args.ezfcf:
+        parse_ezfcf_spectrum(args)
     write_script(args)
+    if args.exec:
+        p = subprocess.run(['python3', str(args.o.name)])
+        
 
 
 if __name__ == '__main__':
